@@ -3,73 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tester DASH: Widevine a ClearKey Patcher</title>
+    <title>Tester Universal: Widevine Clean to ClearKey</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.1/shaka-player.compiled.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #1a1a1a; color: #f0f0f0; }
-        h2 { border-bottom: 2px solid #007bff; padding-bottom: 10px; color: #007bff; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .input-group { margin-bottom: 15px; background: #333; padding: 15px; border-radius: 8px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #bbb; }
-        input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; background: #222; border: 1px solid #555; color: #fff; border-radius: 4px; }
-        input[type="text"]:focus { outline: none; border-color: #007bff; }
-        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: background 0.3s; }
-        button:hover { background: #218838; }
-        #video-container { width: 100%; margin-top: 20px; background: #000; border-radius: 4px; overflow: hidden; }
-        video { width: 100%; display: block; max-height: 80vh; }
-        .log-box { font-family: 'Courier New', monospace; font-size: 13px; background: #000; padding: 10px; margin-top: 15px; height: 200px; overflow-y: scroll; border: 1px solid #444; border-radius: 4px; }
-        .log-entry { margin-bottom: 2px; border-bottom: 1px solid #222; padding-bottom: 2px; }
-        .log-error { color: #ff5555; }
-        .log-success { color: #55ff55; }
-        .log-info { color: #aaa; }
-        .log-hack { color: #ffff55; font-weight: bold; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #e0e0e0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        
+        h2 { border-bottom: 2px solid #bb86fc; padding-bottom: 10px; color: #bb86fc; }
+        
+        .control-group { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
+        
+        label { display: block; margin-bottom: 5px; color: #aaa; font-size: 0.9em; }
+        input { width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        input:focus { border-color: #bb86fc; outline: none; }
+        
+        button { width: 100%; padding: 12px; background: #03dac6; color: #000; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        button:hover { background: #018786; }
+        
+        #video-container { width: 100%; margin-top: 20px; background: #000; }
+        video { width: 100%; display: block; }
+        
+        .logs { background: #000; height: 150px; overflow-y: auto; padding: 10px; font-family: monospace; font-size: 0.8rem; border: 1px solid #333; margin-top: 10px; color: #00ff00; }
+        .log-warn { color: #ffeb3b; }
+        .log-err { color: #ff5252; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Tester DASH (Patch Widevine -> ClearKey)</h2>
+    <h2>DASH Patcher (Widevine -> ClearKey)</h2>
 
-    <div class="input-group">
+    <div class="control-group">
         <label>URL del Manifiesto (.mpd)</label>
-        <input type="text" id="manifestUrl" placeholder="https://dominio.com/video.mpd?token=..." value="">
+        <input type="text" id="manifestUrl" placeholder="https://..." value="">
     </div>
 
-    <div class="input-group">
-        <label>Key ID (Hexadecimal - ej: 32 dígitos)</label>
-        <input type="text" id="keyId" placeholder="Ej: abb8c4463c06318290747e6f6c425299">
-        
-        <label style="margin-top: 10px;">Key (Hexadecimal)</label>
+    <div class="control-group">
+        <label>Key ID (Hexadecimal)</label>
+        <input type="text" id="keyId" placeholder="Ej: edef8ba979d64acea3c827dcd51d21ed">
+        <label style="margin-top:10px">Key (Hexadecimal)</label>
         <input type="text" id="key" placeholder="Ej: 1234567890abcdef1234567890abcdef">
     </div>
 
-    <button onclick="loadVideo()">CARGAR Y PARCHEAR MPD</button>
+    <button onclick="loadVideo()">CARGAR REPRODUCTOR</button>
 
     <div id="video-container">
-        <video id="video" controls autoplay></video>
+        <video id="video" controls autoplay poster="//shaka-player-demo.appspot.com/assets/poster.jpg"></video>
     </div>
 
-    <div class="log-box" id="logBox">
-        <div class="log-entry log-info">Sistema listo. Esperando datos...</div>
-    </div>
+    <div class="logs" id="logs">Esperando instrucciones...</div>
 </div>
 
 <script>
     let player;
 
-    function log(msg, type = 'info') {
-        const logBox = document.getElementById('logBox');
+    function log(msg, type='') {
+        const logs = document.getElementById('logs');
         const div = document.createElement('div');
-        div.classList.add('log-entry');
-        if (type === 'error') div.classList.add('log-error');
-        if (type === 'success') div.classList.add('log-success');
-        if (type === 'hack') div.classList.add('log-hack');
-        else div.classList.add('log-info');
-        
-        const time = new Date().toLocaleTimeString();
-        div.innerText = `[${time}] ${msg}`;
-        logBox.appendChild(div);
-        logBox.scrollTop = logBox.scrollHeight;
+        div.textContent = `> ${msg}`;
+        if(type === 'error') div.className = 'log-err';
+        if(type === 'warn') div.className = 'log-warn';
+        logs.appendChild(div);
+        logs.scrollTop = logs.scrollHeight;
         console.log(msg);
     }
 
@@ -79,110 +74,112 @@
             const video = document.getElementById('video');
             player = new shaka.Player(video);
             player.addEventListener('error', onError);
-            
-            // --- AQUÍ ESTÁ EL HACK ---
-            // Registramos el filtro para interceptar el MPD
+
+            // --- INTERCEPTOR DE RED (EL PARCHE) ---
             player.getNetworkingEngine().registerResponseFilter((type, response) => {
+                // Solo modificamos el archivo Manifiesto (.mpd)
                 if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST) {
-                    patchMpd(response);
+                    patchMpdContent(response);
                 }
             });
 
-            log("Shaka Player inicializado. Filtro de MPD activo.");
+            log("Sistema listo. Interceptor activado.");
         } else {
-            log("El navegador no soporta Shaka Player.", 'error');
+            log("Navegador no soportado", "error");
         }
     }
 
-    // Esta función modifica el XML en memoria
-    function patchMpd(response) {
+    function patchMpdContent(response) {
         try {
-            const stringReader = new TextDecoder("utf-8");
-            let manifestText = stringReader.decode(response.data);
-            
-            // UUIDs conocidos
-            const widevineUUID = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed";
-            const playreadyUUID = "9a04f079-9840-4286-ab92-e65be0885f95";
-            const clearKeyUUID = "e2719d58-a985-b3c9-781a-b030af78d30e";
-            
+            const decoder = new TextDecoder("utf-8");
+            let xml = decoder.decode(response.data);
+
+            const wvUUID = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"; // Widevine
+            const prUUID = "9a04f079-9840-4286-ab92-e65be0885f95"; // PlayReady
+            const ckUUID = "e2719d58-a985-b3c9-781a-b030af78d30e"; // ClearKey
+
             let modificado = false;
 
-            // Reemplazar Widevine
-            if (manifestText.toLowerCase().includes(widevineUUID.toLowerCase())) {
-                log(">> DETECTADO WIDEVINE. Reemplazando por ClearKey...", "hack");
-                const regex = new RegExp(widevineUUID, "gi");
-                manifestText = manifestText.replace(regex, clearKeyUUID);
+            // 1. ELIMINAR DATOS BASURA (PSSH y PRO)
+            // Esto es crucial. Si cambiamos el UUID pero dejamos el PSSH, falla.
+            // Buscamos etiquetas <cenc:pssh>...</cenc:pssh> y las vaciamos o borramos.
+            const psshRegex = /<cenc:pssh>[\s\S]*?<\/cenc:pssh>/gi;
+            const msprRegex = /<mspr:pro>[\s\S]*?<\/mspr:pro>/gi;
+
+            if (psshRegex.test(xml)) {
+                log("Limpiando cabeceras PSSH (Widevine)...", "warn");
+                xml = xml.replace(psshRegex, ''); 
+                modificado = true;
+            }
+            if (msprRegex.test(xml)) {
+                log("Limpiando cabeceras MSPR (PlayReady)...", "warn");
+                xml = xml.replace(msprRegex, ''); 
                 modificado = true;
             }
 
-            // Reemplazar PlayReady (por si acaso)
-            if (manifestText.toLowerCase().includes(playreadyUUID.toLowerCase())) {
-                log(">> DETECTADO PLAYREADY. Reemplazando por ClearKey...", "hack");
-                const regex = new RegExp(playreadyUUID, "gi");
-                manifestText = manifestText.replace(regex, clearKeyUUID);
+            // 2. REEMPLAZAR UUIDs
+            if (xml.includes(wvUUID)) {
+                log("Reemplazando UUID Widevine -> ClearKey", "warn");
+                xml = xml.split(wvUUID).join(ckUUID);
                 modificado = true;
             }
+            if (xml.includes(prUUID)) {
+                xml = xml.split(prUUID).join(ckUUID);
+                modificado = true;
+            }
+
+            // 3. CAMBIAR NOMBRES DE ESQUEMA (Cosmético pero ayuda)
+            xml = xml.replace(/value="Widevine"/gi, 'value="ClearKey"');
+            xml = xml.replace(/value="MSPR 2.0"/gi, 'value="ClearKey"');
 
             if (modificado) {
-                const stringWriter = new TextEncoder("utf-8");
-                response.data = stringWriter.encode(manifestText);
-                log(">> MPD modificado exitosamente. Engañando al navegador.", "success");
-            } else {
-                log("No se encontraron sistemas DRM para reemplazar (o ya es ClearKey).");
+                const encoder = new TextEncoder("utf-8");
+                response.data = encoder.encode(xml);
+                log("MPD Parcheado con éxito en memoria.");
             }
 
         } catch (e) {
-            log("Error intentando parchear el MPD: " + e.message, "error");
+            log("Error crítico al parchear MPD: " + e.message, "error");
         }
     }
 
     async function loadVideo() {
-        const manifestUrl = document.getElementById('manifestUrl').value.trim();
-        // Limpiamos guiones o espacios extra en las claves
-        const kId = document.getElementById('keyId').value.trim().replace(/-/g, '').toLowerCase();
-        const k = document.getElementById('key').value.trim().toLowerCase();
+        const url = document.getElementById('manifestUrl').value.trim();
+        let kid = document.getElementById('keyId').value.trim().toLowerCase();
+        const key = document.getElementById('key').value.trim().toLowerCase();
 
-        if (!manifestUrl) { alert("Falta la URL"); return; }
+        // Limpiar guiones del KID si el usuario los puso
+        kid = kid.replace(/-/g, '');
 
-        // Configuración del Player
-        let config = { 
-            drm: { 
-                servers: {} // Limpiar servidores anteriores
-            } 
-        };
+        if (!url) { alert("Falta URL"); return; }
 
-        if (kId && k) {
-            log(`Configurando ClearKey: ${kId}:${k}`);
-            config.drm.clearKeys = {};
-            config.drm.clearKeys[kId] = k;
+        const config = { drm: { clearKeys: {} } };
+
+        if (kid && key) {
+            config.drm.clearKeys[kid] = key;
+            log(`Configurando Key: ${kid}:${key}`);
         } else {
-            log("Cargando SIN claves explícitas (esperando video abierto o claves en MPD).", "hack");
+            log("Advertencia: Cargando sin Keys (fallará si está encriptado)", "warn");
         }
 
         player.configure(config);
 
         try {
-            log("Iniciando carga de: " + manifestUrl);
-            await player.load(manifestUrl);
-            log("¡Video cargado! Si las claves son correctas, se verá la imagen.", "success");
+            log("Descargando manifiesto...");
+            await player.load(url);
+            log("Video inicializado. ¡Disfruta!");
         } catch (e) {
             onError(e);
         }
     }
 
     function onError(event) {
-        let error = event.detail || event;
-        log(`ERROR SHAKA ${error.code}: ${error.message}`, 'error');
+        let e = event.detail || event;
+        log(`Error ${e.code}: ${e.message}`, "error");
         
-        if (error.code === 6007 || error.code === 6008) {
-            log("PISTA: Error de licencia. ¿Son correctas las claves (KeyID/Key)?", 'hack');
-        }
-        if (error.code === 1002) {
-             log("PISTA: Error de RED/CORS. Activa la extensión 'Allow CORS'.", 'hack');
-        }
-        if (error.code === 4000) {
-             log("PISTA: El navegador no pudo decodificar. Puede ser DRM bloqueado o códec no soportado.", 'hack');
-        }
+        if (e.code === 1002) log(">> ERROR CORS: Activa la extensión 'Allow CORS' en tu navegador.", "warn");
+        if (e.code === 6007 || e.code === 6008) log(">> ERROR KEY: La clave o el KeyID son incorrectos.", "warn");
+        if (e.code === 4000) log(">> ERROR DECODING: Clave incorrecta o navegador incompatible.", "warn");
     }
 
     document.addEventListener('DOMContentLoaded', init);
