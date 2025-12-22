@@ -3,101 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tester Universal DASH cbcs/cenc</title>
+    <title>Tester DASH: Widevine a ClearKey Patcher</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.1/shaka-player.compiled.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #222; color: #fff; }
-        input, button { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        #video-container { width: 100%; max-width: 800px; margin: 0 auto; margin-top: 20px; }
-        video { width: 100%; border: 1px solid #444; }
-        .label { font-size: 0.8em; color: #ccc; margin-bottom: 5px; display: block; }
-        .log { font-family: monospace; font-size: 0.8em; background: #000; padding: 10px; margin-top: 10px; height: 150px; overflow-y: scroll; border: 1px solid #444;}
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: #1a1a1a; color: #f0f0f0; }
+        h2 { border-bottom: 2px solid #007bff; padding-bottom: 10px; color: #007bff; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .input-group { margin-bottom: 15px; background: #333; padding: 15px; border-radius: 8px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #bbb; }
+        input[type="text"] { width: 100%; padding: 10px; box-sizing: border-box; background: #222; border: 1px solid #555; color: #fff; border-radius: 4px; }
+        input[type="text"]:focus { outline: none; border-color: #007bff; }
+        button { width: 100%; padding: 15px; background: #28a745; color: white; border: none; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: background 0.3s; }
+        button:hover { background: #218838; }
+        #video-container { width: 100%; margin-top: 20px; background: #000; border-radius: 4px; overflow: hidden; }
+        video { width: 100%; display: block; max-height: 80vh; }
+        .log-box { font-family: 'Courier New', monospace; font-size: 13px; background: #000; padding: 10px; margin-top: 15px; height: 200px; overflow-y: scroll; border: 1px solid #444; border-radius: 4px; }
+        .log-entry { margin-bottom: 2px; border-bottom: 1px solid #222; padding-bottom: 2px; }
+        .log-error { color: #ff5555; }
+        .log-success { color: #55ff55; }
+        .log-info { color: #aaa; }
+        .log-hack { color: #ffff55; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h2>Tester DASH ClearKey (cbcs/cenc)</h2>
+<div class="container">
+    <h2>Tester DASH (Patch Widevine -> ClearKey)</h2>
 
-    <label class="label">URL del Manifiesto (.mpd)</label>
-    <input type="text" id="manifestUrl" placeholder="https://ejemplo.com/video.mpd">
+    <div class="input-group">
+        <label>URL del Manifiesto (.mpd)</label>
+        <input type="text" id="manifestUrl" placeholder="https://dominio.com/video.mpd?token=..." value="">
+    </div>
 
-    <label class="label">Key ID (Hexadecimal - Sin guiones)</label>
-    <input type="text" id="keyId" placeholder="Ej: abb8c4463c06318290747e6f6c425299">
+    <div class="input-group">
+        <label>Key ID (Hexadecimal - ej: 32 dígitos)</label>
+        <input type="text" id="keyId" placeholder="Ej: abb8c4463c06318290747e6f6c425299">
+        
+        <label style="margin-top: 10px;">Key (Hexadecimal)</label>
+        <input type="text" id="key" placeholder="Ej: 1234567890abcdef1234567890abcdef">
+    </div>
 
-    <label class="label">Key (Hexadecimal)</label>
-    <input type="text" id="key" placeholder="Ej: 1234567890abcdef1234567890abcdef">
-
-    <button onclick="loadVideo()">CARGAR Y REPRODUCIR</button>
+    <button onclick="loadVideo()">CARGAR Y PARCHEAR MPD</button>
 
     <div id="video-container">
         <video id="video" controls autoplay></video>
     </div>
 
-    <div class="log" id="logBox">Logs del sistema...</div>
+    <div class="log-box" id="logBox">
+        <div class="log-entry log-info">Sistema listo. Esperando datos...</div>
+    </div>
+</div>
 
-    <script>
-        let player;
+<script>
+    let player;
 
-        function log(msg) {
-            const logBox = document.getElementById('logBox');
-            logBox.innerHTML += `> ${msg}<br>`;
-            logBox.scrollTop = logBox.scrollHeight;
-            console.log(msg);
+    function log(msg, type = 'info') {
+        const logBox = document.getElementById('logBox');
+        const div = document.createElement('div');
+        div.classList.add('log-entry');
+        if (type === 'error') div.classList.add('log-error');
+        if (type === 'success') div.classList.add('log-success');
+        if (type === 'hack') div.classList.add('log-hack');
+        else div.classList.add('log-info');
+        
+        const time = new Date().toLocaleTimeString();
+        div.innerText = `[${time}] ${msg}`;
+        logBox.appendChild(div);
+        logBox.scrollTop = logBox.scrollHeight;
+        console.log(msg);
+    }
+
+    async function init() {
+        shaka.polyfill.installAll();
+        if (shaka.Player.isBrowserSupported()) {
+            const video = document.getElementById('video');
+            player = new shaka.Player(video);
+            player.addEventListener('error', onError);
+            
+            // --- AQUÍ ESTÁ EL HACK ---
+            // Registramos el filtro para interceptar el MPD
+            player.getNetworkingEngine().registerResponseFilter((type, response) => {
+                if (type === shaka.net.NetworkingEngine.RequestType.MANIFEST) {
+                    patchMpd(response);
+                }
+            });
+
+            log("Shaka Player inicializado. Filtro de MPD activo.");
+        } else {
+            log("El navegador no soporta Shaka Player.", 'error');
         }
+    }
 
-        async function init() {
-            shaka.polyfill.installAll();
-            if (shaka.Player.isBrowserSupported()) {
-                const video = document.getElementById('video');
-                player = new shaka.Player(video);
-                player.addEventListener('error', onError);
-                log("Shaka Player listo.");
+    // Esta función modifica el XML en memoria
+    function patchMpd(response) {
+        try {
+            const stringReader = new TextDecoder("utf-8");
+            let manifestText = stringReader.decode(response.data);
+            
+            // UUIDs conocidos
+            const widevineUUID = "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed";
+            const playreadyUUID = "9a04f079-9840-4286-ab92-e65be0885f95";
+            const clearKeyUUID = "e2719d58-a985-b3c9-781a-b030af78d30e";
+            
+            let modificado = false;
+
+            // Reemplazar Widevine
+            if (manifestText.toLowerCase().includes(widevineUUID.toLowerCase())) {
+                log(">> DETECTADO WIDEVINE. Reemplazando por ClearKey...", "hack");
+                const regex = new RegExp(widevineUUID, "gi");
+                manifestText = manifestText.replace(regex, clearKeyUUID);
+                modificado = true;
+            }
+
+            // Reemplazar PlayReady (por si acaso)
+            if (manifestText.toLowerCase().includes(playreadyUUID.toLowerCase())) {
+                log(">> DETECTADO PLAYREADY. Reemplazando por ClearKey...", "hack");
+                const regex = new RegExp(playreadyUUID, "gi");
+                manifestText = manifestText.replace(regex, clearKeyUUID);
+                modificado = true;
+            }
+
+            if (modificado) {
+                const stringWriter = new TextEncoder("utf-8");
+                response.data = stringWriter.encode(manifestText);
+                log(">> MPD modificado exitosamente. Engañando al navegador.", "success");
             } else {
-                log("El navegador no soporta Shaka Player.");
+                log("No se encontraron sistemas DRM para reemplazar (o ya es ClearKey).");
             }
+
+        } catch (e) {
+            log("Error intentando parchear el MPD: " + e.message, "error");
+        }
+    }
+
+    async function loadVideo() {
+        const manifestUrl = document.getElementById('manifestUrl').value.trim();
+        // Limpiamos guiones o espacios extra en las claves
+        const kId = document.getElementById('keyId').value.trim().replace(/-/g, '').toLowerCase();
+        const k = document.getElementById('key').value.trim().toLowerCase();
+
+        if (!manifestUrl) { alert("Falta la URL"); return; }
+
+        // Configuración del Player
+        let config = { 
+            drm: { 
+                servers: {} // Limpiar servidores anteriores
+            } 
+        };
+
+        if (kId && k) {
+            log(`Configurando ClearKey: ${kId}:${k}`);
+            config.drm.clearKeys = {};
+            config.drm.clearKeys[kId] = k;
+        } else {
+            log("Cargando SIN claves explícitas (esperando video abierto o claves en MPD).", "hack");
         }
 
-        async function loadVideo() {
-            const manifestUrl = document.getElementById('manifestUrl').value.trim();
-            const kId = document.getElementById('keyId').value.trim().toLowerCase();
-            const k = document.getElementById('key').value.trim().toLowerCase();
+        player.configure(config);
 
-            if (!manifestUrl) { alert("Falta la URL del MPD"); return; }
-
-            // Configurar DRM si hay claves
-            if (kId && k) {
-                log(`Configurando ClearKey.\nKID: ${kId}\nKEY: ${k}`);
-                player.configure({
-                    drm: {
-                        clearKeys: {
-                            [kId]: k
-                        }
-                    }
-                });
-            } else {
-                log("Cargando sin claves DRM explícitas (Video abierto o claves en MPD).");
-            }
-
-            try {
-                await player.load(manifestUrl);
-                log("¡Video cargado correctamente! Debería reproducirse.");
-            } catch (e) {
-                onError(e);
-            }
+        try {
+            log("Iniciando carga de: " + manifestUrl);
+            await player.load(manifestUrl);
+            log("¡Video cargado! Si las claves son correctas, se verá la imagen.", "success");
+        } catch (e) {
+            onError(e);
         }
+    }
 
-        function onError(event) {
-            // Extraer el error del evento o del objeto error
-            let error = event.detail || event;
-            log(`ERROR ${error.code}: ${error.message}`);
-            if(error.code === 6007 || error.code === 6008) {
-                 log("PISTA: Esto suele ser error de licencia/claves.");
-            }
+    function onError(event) {
+        let error = event.detail || event;
+        log(`ERROR SHAKA ${error.code}: ${error.message}`, 'error');
+        
+        if (error.code === 6007 || error.code === 6008) {
+            log("PISTA: Error de licencia. ¿Son correctas las claves (KeyID/Key)?", 'hack');
         }
+        if (error.code === 1002) {
+             log("PISTA: Error de RED/CORS. Activa la extensión 'Allow CORS'.", 'hack');
+        }
+        if (error.code === 4000) {
+             log("PISTA: El navegador no pudo decodificar. Puede ser DRM bloqueado o códec no soportado.", 'hack');
+        }
+    }
 
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+    document.addEventListener('DOMContentLoaded', init);
+</script>
+
 </body>
 </html>
