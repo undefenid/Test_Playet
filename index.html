@@ -1,103 +1,234 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tester Universal DASH cbcs/cenc</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.1/shaka-player.compiled.js"></script>
-    <style>
-        body { font-family: sans-serif; padding: 20px; background: #222; color: #fff; }
-        input, button { width: 100%; padding: 10px; margin-bottom: 10px; box-sizing: border-box; }
-        button { background: #007bff; color: white; border: none; font-weight: bold; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        #video-container { width: 100%; max-width: 800px; margin: 0 auto; margin-top: 20px; }
-        video { width: 100%; border: 1px solid #444; }
-        .label { font-size: 0.8em; color: #ccc; margin-bottom: 5px; display: block; }
-        .log { font-family: monospace; font-size: 0.8em; background: #000; padding: 10px; margin-top: 10px; height: 150px; overflow-y: scroll; border: 1px solid #444;}
-    </style>
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="cache-control" content="no-cache" />
+  <meta http-equiv="expires" content="0" />
+  <meta http-equiv="pragma" content="no-cache" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <style>
+    #player {
+      width: 100%;
+      max-width: 800px;
+      margin: auto;
+      background-color: #000;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+      position: relative;
+    }
+
+    .jwplayer { color: #fff !important; font-family: 'Segoe UI', sans-serif; }
+    .jw-controlbar { background-color: rgba(20,20,20,0.85) !important; border-top: 1px solid #333; }
+    .jw-controlbar .jw-button-container { position: absolute !important; top: -46px; left:0; right:0; height:46px; background: linear-gradient(to bottom, rgba(0,0,0,0.85), rgba(0,0,0,0.35)); border-bottom:1px solid #333; padding:4px 8px; z-index:10; }
+    .jwplayer video { margin-top:46px; }
+    .jw-button-color { color:#ccc !important; } 
+    .jw-button-color:hover { color:#FFD120 !important; }
+    .jw-icon { filter: brightness(1.4); }
+    .jw-time { color:#eee !important; font-size:12px; }
+    .jw-text-track-display { background-color: rgba(0,0,0,0.6); color:#fff; font-size:16px; font-family:'Segoe UI',sans-serif; }
+    .jw-title { color:#ddd !important; }
+    .jw-display-icon-container { background-color: rgba(0,0,0,0.5); }
+    .ios-landscape { transform:rotate(90deg); transform-origin:center center; width:100vh !important; height:100vw !important; position:fixed !important; top:0; left:0; background:#000; z-index:9999; }
+
+    /* Ocultar el overlay "Próximo" de JW Player */
+    .jw-nextup-container { display: none !important; }
+  </style>
 </head>
+
 <body>
 
-    <h2>Tester DASH ClearKey (cbcs/cenc)</h2>
+<div id="player" allow="fullscreen; screen-orientation-lock"></div>
 
-    <label class="label">URL del Manifiesto (.mpd)</label>
-    <input type="text" id="manifestUrl" placeholder="https://ejemplo.com/video.mpd">
+<script src="https://ssl.p.jwpcdn.com/player/v/8.32.0/jwplayer.js"></script>
 
-    <label class="label">Key ID (Hexadecimal - Sin guiones)</label>
-    <input type="text" id="keyId" placeholder="Ej: abb8c4463c06318290747e6f6c425299">
+<script>
+jwplayer.key = 'XSuP4qMl+9tK17QNb+4+th2Pm9AWgMO/cYH8CI0HGGr7bdjo';
 
-    <label class="label">Key (Hexadecimal)</label>
-    <input type="text" id="key" placeholder="Ej: 1234567890abcdef1234567890abcdef">
+function iniciarReproductor() {
 
-    <button onclick="loadVideo()">CARGAR Y REPRODUCIR</button>
+  const playlist = [
+    {
+      title: "RÍO CUARTO TV",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEijtWJLRTGAzPNrpFh1JbT6pXL4heG3wBcJrPaeu7bSfTNHPG5C6-NLgJYSwmQzPjGfSYY0GkS5cVTy3BglQ1t77Go02SwH_rtW7dbkArzCclW7KomllgH6iNF3SKU73kCH2g3eZllADQr8uY8eiyAaZdxpIOg_w8pxJenCnDVr68qRn9pStwyjvIGYrDo/s200/52e91196-8c74-47b5-a88c-7d858a1f827a-removebg-preview%20%281%29.png",
+      sources: [{
+        file: "https://el4live1.boldmss.com/C13/C13_EL4.isml/C13_EL4.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "91a8cceadd644f7fbe30d459f409186e", key: "e2d231880d3a8f7eb01e5897aca83971" } },
+        label: "HD",
+        default: true
+      }]
+    },
+    {
+      title: "EL CANAL DE LA GENTE",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg_akidq355zu8wTHhap5Esma6NoNLR56DVRjD1avIHZ20DQFTpJWD_STv0RhqlggH6romf-Jl4oeGgEvuytY5GmsYqXYnpDi5k_T-Dfi92Yhdj6hxa-TymwjSjDks-1YRcUOdmRRwQtriCOIq-PTPhK_VOn3IGeO7QrBTCZ5ES5m6w0Gk5Q6QyFpiw0qQ/s200/295%20sin%20t%C3%ADtulo_Restaurado_20251217221953.png",
+      sources: [{
+        file: "https://bvclive1.boldmss.com/CANAL26/CANAL26.isml/CANAL26.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "91a8cceadd644f7fbe30d459f409186e", key: "e2d231880d3a8f7eb01e5897aca83971" } },
+        label: "HD",
+        default: true
+      }]
+    },
+    {
+      title: "AMÉRICA TV AMBA",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjKpV-TOGr6SL5YJ0zFnpX6j0v28boOeD4NjmZ9o9r14GTrBbAzgxIkhMNYu88YyjkgiykYi_xENkCydTPfdWyrdTIP1lK5uNK0c6TMA1o6YrjXU1fWHbyK1vBdZISeFMXNi8AhVMBLhxElBL8Ur6x-SkJNZcdck440t5Nf5oDI7ocxsXYm9kjMVW6Gejw/s200/385531818_1521898121997344_8270507597056168365_n.png",
+      sources: [{
+        file: "https://cdn.cvattv.com.ar/live/c3eds/AmericaTV/SA_Live_dash_enc_C/AmericaTV.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "8ea235ce0826408b221c498115a9b62d", key: "7aa9266ed91ea4510483370029dfcf45" } },
+        label: "HD",
+        default: true
+      }]
+    },
+      {
+      title: "TV PÚBLICA",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj2AaWQaPC0offBPIaUUaiqAaraQDXBJKWnsU584AldDjKoFJmt88vnq6VrdLdNl7i9XdR5NMb3nMFoxS6ao5RLHWn2UZh_8yXWBmr-xHUlksReLCRI7G9XuMGIWjU7bsPVIJB5lVNZgUShblPZ9L8GUXfIGwbX7L7-UwFqk3XBZIfWQX1jVOOtd1THeKw/s200/tvpHD.png",
+      sources: [{
+        file: "https://joy.nx-pc.edge-apps.net/hls/m4lf3-ad2jd-672pb-a46k9.m3u8",
+        type: "hls",
+        label: "HD"
+      }]
+    },
+    {
+      title: "EL NUEVE AMBA",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgnCoEKoZc_ZVbjPQmX9epQBvcb1Sq4JmL-uRb98hKdSNIU9-eSH-aeiwrrwyUz1j4xRhtPsrBXn-_7-trrdXd2E8LpYl1IWzCwM-W6cuaSIuIoOvuLh96sa7lDOmqIDCVXSCKEg4LAMkPeKDDd1H1Qk6vNduGgnbeJKzvya314mNJtCavBZ1fbDBhQkmI/s200/image__1_-removebg-preview.png",
+      sources: [{
+        file: "https://cdn.cvattv.com.ar/live/c3eds/Canal9/SA_Live_dash_enc_C/Canal9.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "24f4ff211136ae6512a1b552200db405", key: "602122f8426c5c942b8c18d299cc6020" } },
+        label: "HD",
+        default: true
+      }]
+    },
+    {
+      title: "ASPEN 102.3",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhUGyszhiKqqKSPNCfdr2unhR_9EpEUe5OXRIz3P1hHRCigFQJOvuuqH7kgkrVMlu8pT2cPzAX65Suw2EfzrbQNft1kFxFlUHqPhcQ4ln_cTXI1BHqpLfnA_yOuy42Xlidzbmg62P5Jr55wL1-ZbVR_eUKZp8RtYCYd6RHivRWh2_hRmBshF8TVB5EGEeE/s200/225px-Aspen102-removebg-preview.png",
+      sources: [{
+        file: "https://val04.ride.com.ar/tvmia/an67/playlist.m3u8",
+        type: "hls",
+        label: "HD"
+      }]
+    },
+    {
+      title: "TELEFE AMBA",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgKuJqDAW5AwFX1XWFmPCDXEiUdwLJUJGsRCnsul1w4hrXtGc7zEtCTgWsr-_odiO694mY0jr2-z61G0qe0-S-JiZeSkgsS5ESEpMlfHIofVS_0Fn2MetbKi4AZOIbz0PgfFaoyfOP1JCji1-CzymbYQDrNnS8po39ewajk9KOUpMOVu-r6eFBnQSlbo2M/s200/image__2_-removebg-preview.png",
+      sources: [{
+        file: "https://cdn.cvattv.com.ar/live/c6eds/TelefeHD/SA_Live_dash_enc_C/TelefeHD.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "3cec1b1ea9799dda5596e64f37e5ed20", key: "c69f3afde2085dcaaaddbf55246a0323" } },
+        label: "HD",
+        default: true
+      }]
+    },
+    {
+      title: "EL TRECE AMBA",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEieRkwvqwODF5vpPjqMnxL9zC1gHW2ySpypwm3SNd3F05AIl-ewhLl2ke-NomsUFvZO1ZNJ18xUvxDlnzbagdz1j4C5POQKd2VYptP_B4O95jFRRqA_ATC2Y0aqEMncYSkKUEHe22bT5e9jbZlAqoxwB4BQrGiqpK7KhHYUS7RYrNK1Ta_KdnQg6JwsUq0/s200/Screenshot_2024-02-10_at_11-40-55_image.png__Imagen_PNG_240___240_pixels_-removebg-preview.png",
+      sources: [{
+        file: "https://cdn.cvattv.com.ar/live/c3eds/ArtearHD/SA_Live_dash_enc_C/ArtearHD.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "5179017f49326d14af0a9ceec831aee6", key: "09b4a463b029ebc28a288bed2da70a76" } },
+        label: "HD",
+        default: true
+      }]
+    },
+    {
+      title: "TELEMAX",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjyZ8WQuaum5jQTnnGAWndEEu3EWyD9cnGSxtGWzDTpWyE24oMF6qvujHdnTRzU6f3bpsrtBEP4RFOxnJuVVd47320lKFDdwEsj9oj_HBooVjQoOeqQ-8Ych5RkAxcO8DMmbTo1t3B3hyLECy3M8HfL1-1wGCoMiILJfIpuizzMkL9N91bBThiSOLfOo5Q/s200/371466983_1562983627866782_3744421367611309190_n.png",
+      sources: [{
+        file: "https://bvclive1.boldmss.com/TELEMAX/TELEMAX.isml/TELEMAX.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "5179017f49326d14af0a9ceec831aee6", key: "09b4a463b029ebc28a288bed2da70a76" } },
+        label: "HD",
+        default: true
+      }]
+    },
+    {
+      title: "NET TV",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjyZ8WQuaum5jQTnnGAWndEEu3EWyD9cnGSxtGWzDTpWyE24oMF6qvujHdnTRzU6f3bpsrtBEP4RFOxnJuVVd47320lKFDdwEsj9oj_HBooVjQoOeqQ-8Ych5RkAxcO8DMmbTo1t3B3hyLECy3M8HfL1-1wGCoMiILJfIpuizzMkL9N91bBThiSOLfOo5Q/s200/371466983_1562983627866782_3744421367611309190_n.png",
+      sources: [{
+        file: "https://joy.nx-pc.edge-apps.net/hls/lb0ol-ailc9-5k80-j4fj6.m3u8",
+        type: "hls",
+        label: "HD"
+      }]
+    },
+    {
+      title: "BRAVO TV",
+      image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj_2SLDHhckMmRseqJ_9dH6uSo9x-kKGjQzOMv9unDlsh2RQje_aoIfMShr35BjH5oq2OztL_MqAAPKitb88qL8lltjUy8stkdJMoJMjpEozrDkGq9bhraR1y3_JXCmWGbj6ZzYcQv4_o4EHZkX-rVMKkfI6a1nnLeTA3MxUtW2mp-pSYwVx0BoJgBtUCc/s200/393902631_3704071503174512_8078987751482641378_n.png",
+      sources: [{
+        file: "https://cdn.cvattv.com.ar/live/c7eds/BravoTV/SA_Live_dash_enc_C/BravoTV.mpd",
+        type: "dash",
+        drm: { clearkey: { keyId: "ad7fbbec39cea4a5a63ac13d94da48d4", key: "f71087b4dc211db079237c0fb783eb93" } },
+        label: "HD",
+        default: true
+      }]
+    },
+  ];
 
-    <div id="video-container">
-        <video id="video" controls autoplay></video>
-    </div>
+  const player = jwplayer("player").setup({
+    playlist: playlist,
+    width: "100%",
+    height: "100%",
+    aspectratio: "16:9",
+    autostart: false,
+    mute: false,
+    preload: "auto",
+    displaytitle: true,
+    displaydescription: false
+  });
 
-    <div class="log" id="logBox">Logs del sistema...</div>
+  // Audio Boost
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSmartTV = /SmartTV|Tizen|Web0S|SmartHub|Chromecast/i.test(navigator.userAgent);
 
-    <script>
-        let player;
+  if (!isSmartTV) {
+    player.on("play", function () {
+      const video = document.querySelector("#player video");
+      if (video && !video.audioBoostApplied) {
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioCtx.createMediaElementSource(video);
+          const gain = audioCtx.createGain();
+          gain.gain.value = 5;
+          source.connect(gain);
+          gain.connect(audioCtx.destination);
+          video.muted = false;
+          video.volume = 1.0;
+          video.audioBoostApplied = true;
+        } catch(e) { console.warn("Audio boost no disponible:", e); }
+      }
+    });
+  }
 
-        function log(msg) {
-            const logBox = document.getElementById('logBox');
-            logBox.innerHTML += `> ${msg}<br>`;
-            logBox.scrollTop = logBox.scrollHeight;
-            console.log(msg);
-        }
+  if (isSmartTV) {
+    player.on("ready", function () {
 
-        async function init() {
-            shaka.polyfill.installAll();
-            if (shaka.Player.isBrowserSupported()) {
-                const video = document.getElementById('video');
-                player = new shaka.Player(video);
-                player.addEventListener('error', onError);
-                log("Shaka Player listo.");
-            } else {
-                log("El navegador no soporta Shaka Player.");
-            }
-        }
+      const video = document.querySelector("#player video");
+      if (video) {
+        video.muted = false;
+        try { video.volume = 1.0; } catch(e){}
+      }
+    });
+  }
 
-        async function loadVideo() {
-            const manifestUrl = document.getElementById('manifestUrl').value.trim();
-            const kId = document.getElementById('keyId').value.trim().toLowerCase();
-            const k = document.getElementById('key').value.trim().toLowerCase();
+  // Fullscreen y orientación
+  player.on("fullscreen", function(e) {
+    const contenedor = document.getElementById("player");
+    if (!isIOS && screen.orientation) {
 
-            if (!manifestUrl) { alert("Falta la URL del MPD"); return; }
+      if (e.fullscreen) { try { screen.orientation.lock("landscape"); } catch(e){} } 
+      else { try { screen.orientation.unlock(); } catch(e){} }
+    }
+    if (isIOS) {
+      if (e.fullscreen) contenedor.classList.add("ios-landscape");
+      else contenedor.classList.remove("ios-landscape");
+    }
+  });
 
-            // Configurar DRM si hay claves
-            if (kId && k) {
-                log(`Configurando ClearKey.\nKID: ${kId}\nKEY: ${k}`);
-                player.configure({
-                    drm: {
-                        clearKeys: {
-                            [kId]: k
-                        }
-                    }
-                });
-            } else {
-                log("Cargando sin claves DRM explícitas (Video abierto o claves en MPD).");
-            }
+}
 
-            try {
-                await player.load(manifestUrl);
-                log("¡Video cargado correctamente! Debería reproducirse.");
-            } catch (e) {
-                onError(e);
-            }
-        }
+window.onload = iniciarReproductor;
 
-        function onError(event) {
-            // Extraer el error del evento o del objeto error
-            let error = event.detail || event;
-            log(`ERROR ${error.code}: ${error.message}`);
-            if(error.code === 6007 || error.code === 6008) {
-                 log("PISTA: Esto suele ser error de licencia/claves.");
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+</script>
 </body>
 </html>
